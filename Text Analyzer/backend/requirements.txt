@@ -1,0 +1,7 @@
+# Production dependencies — exact versions pinned for reproducibility.
+# Regenerate with: pip-compile requirements.in (if you set up pip-tools)
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+celery==5.4.0
+redis==5.2.0
+pydantic==2.9.2

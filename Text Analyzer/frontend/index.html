@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Text Analyzer</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0a0c10;
+    color: #e6e8ec;
+    min-height: 100vh;
+    padding: 32px 16px 64px;
+  }
+  .wrap { width: 100%; max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 28px; margin: 0 0 4px; font-weight: 600; letter-spacing: -0.5px; }
+  h1 .accent { background: linear-gradient(90deg, #4a7cff, #c77cff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .sub { color: #8a90a0; font-size: 14px; margin-bottom: 24px; }
+
+  .card {
+    background: #151820;
+    border: 1px solid #242832;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #8a90a0;
+    margin: 0 0 14px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 180px;
+    background: #0a0c10;
+    color: #e6e8ec;
+    border: 1px solid #2b303c;
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 1.5;
+    resize: vertical;
+  }
+  textarea:focus { outline: none; border-color: #4a7cff; }
+
+  .controls { display: flex; gap: 12px; margin-top: 12px; align-items: center; }
+  .char-count { font-size: 12px; color: #6b7080; flex: 1; }
+  button {
+    background: #4a7cff;
+    color: #fff;
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  button:disabled { background: #2b303c; color: #6b7080; cursor: not-allowed; }
+  button:hover:not(:disabled) { background: #5c8aff; }
+  button.secondary { background: #2b303c; }
+  button.secondary:hover:not(:disabled) { background: #3a414f; }
+
+  /* Progress */
+  .progress-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: #a0a6b8; }
+  .progress-row strong { color: #e6e8ec; }
+  .bar { width: 100%; height: 6px; background: #0a0c10; border: 1px solid #2b303c; border-radius: 999px; overflow: hidden; }
+  .bar > div { height: 100%; background: linear-gradient(90deg, #4a7cff, #c77cff); width: 0; transition: width 0.3s ease; }
+  .task-pills { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .pill {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #0a0c10;
+    border: 1px solid #2b303c;
+    color: #6b7080;
+  }
+  .pill.done { background: #1a2a1e; border-color: #2d5a38; color: #7ed99c; }
+
+  /* Dashboard grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .grid .span-2 { grid-column: span 2; }
+  .grid .span-3 { grid-column: span 3; }
+  .grid .span-4 { grid-column: span 4; }
+
+  /* Stat tiles */
+  .stat-tile {
+    background: #0a0c10;
+    border: 1px solid #2b303c;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-tile .val { font-size: 26px; font-weight: 700; color: #e6e8ec; letter-spacing: -0.5px; }
+  .stat-tile .lbl { font-size: 11px; color: #8a90a0; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-tile .sub-val { font-size: 11px; color: #6b7080; margin-top: 2px; }
+
+  /* Sentiment gauge */
+  .gauge-wrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .gauge { width: 100%; max-width: 220px; }
+  .gauge-label {
+    margin-top: -35px;
+    font-size: 20px;
+    font-weight: 700;
+    text-transform: capitalize;
+  }
+  .gauge-label.positive { color: #7ed99c; }
+  .gauge-label.negative { color: #ff6b6b; }
+  .gauge-label.neutral { color: #a0a6b8; }
+  .gauge-score { font-size: 11px; color: #6b7080; margin-top: 2px; }
+
+  /* Readability meter */
+  .meter-row { margin-bottom: 14px; }
+  .meter-label { display: flex; justify-content: space-between; font-size: 12px; color: #a0a6b8; margin-bottom: 6px; }
+  .meter-label strong { color: #e6e8ec; font-weight: 500; }
+  .meter {
+    width: 100%;
+    height: 10px;
+    background: linear-gradient(90deg, #ff6b6b 0%, #ffb84a 30%, #7ed99c 60%, #4a7cff 85%);
+    border-radius: 999px;
+    position: relative;
+  }
+  .meter .marker {
+    position: absolute;
+    top: -3px;
+    width: 4px;
+    height: 16px;
+    background: #fff;
+    border-radius: 2px;
+    transform: translateX(-2px);
+    box-shadow: 0 0 0 2px #151820;
+  }
+  .reading-level {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #0a0c10;
+    border: 1px solid #2b303c;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .reading-level strong { color: #4a7cff; }
+
+  /* Keyword cloud */
+  .cloud { display: flex; flex-wrap: wrap; gap: 8px; }
+  .kw {
+    background: #0a0c10;
+    border: 1px solid #2b303c;
+    color: #e6e8ec;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .kw .count { color: #6b7080; font-size: 11px; }
+
+  /* Entities */
+  .entity-group { margin-bottom: 12px; }
+  .entity-group:last-child { margin-bottom: 0; }
+  .entity-group h3 { font-size: 11px; text-transform: uppercase; color: #8a90a0; margin: 0 0 6px; font-weight: 600; letter-spacing: 0.5px; }
+  .entity-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ent {
+    background: #0a0c10;
+    border: 1px solid #2b303c;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: ui-monospace, Consolas, monospace;
+    color: #a0a6b8;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ent.email { color: #ffb84a; }
+  .ent.url { color: #4a7cff; }
+  .ent.hashtag { color: #c77cff; }
+  .ent.mention { color: #7ed99c; }
+  .ent.date { color: #ff9acd; }
+  .ent.proper { color: #e6e8ec; border-color: #3a414f; }
+  .ent-empty { color: #6b7080; font-size: 12px; font-style: italic; }
+
+  /* Sentence list (sentiment detail) */
+  .sentences { max-height: 340px; overflow-y: auto; padding-right: 4px; }
+  .sentence {
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.45;
+    border-left: 3px solid #2b303c;
+    background: #0a0c10;
+  }
+  .sentence.positive { border-left-color: #7ed99c; background: rgba(126, 217, 156, 0.06); }
+  .sentence.negative { border-left-color: #ff6b6b; background: rgba(255, 107, 107, 0.06); }
+  .sentence .badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 8px;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .sentence.positive .badge { background: rgba(126, 217, 156, 0.2); color: #7ed99c; }
+  .sentence.negative .badge { background: rgba(255, 107, 107, 0.2); color: #ff6b6b; }
+  .sentence.neutral .badge { background: #2b303c; color: #8a90a0; }
+
+  .hidden { display: none; }
+
+  @media (max-width: 800px) {
+    .grid { grid-template-columns: 1fr 1fr; }
+    .grid .span-3, .grid .span-4 { grid-column: span 2; }
+  }
+  @media (max-width: 500px) {
+    .grid { grid-template-columns: 1fr; }
+    .grid .span-2, .grid .span-3, .grid .span-4 { grid-column: span 1; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1><span class="accent">Text</span> Analyzer</h1>
+    <div class="sub">Paste text → 5 analyses run in parallel across Celery workers → dashboard.</div>
+
+    <div class="card">
+      <textarea id="input" placeholder="Paste an article, email, essay, review, blog post, or any text here..."></textarea>
+      <div class="controls">
+        <span class="char-count"><strong id="char-count">0</strong> characters</span>
+        <button class="secondary" id="sample">Load sample</button>
+        <button id="analyze" disabled>Analyze</button>
+      </div>
+    </div>
+
+    <div id="progress-card" class="card hidden">
+      <div class="progress-row">
+        <span>Running <strong id="status">-</strong></span>
+        <span><strong id="completed">0</strong>/<strong id="total">5</strong> tasks · <strong id="percent">0%</strong></span>
+      </div>
+      <div class="bar"><div id="bar-fill"></div></div>
+      <div class="task-pills">
+        <span class="pill" data-task="basic_stats">Stats</span>
+        <span class="pill" data-task="readability">Readability</span>
+        <span class="pill" data-task="sentiment">Sentiment</span>
+        <span class="pill" data-task="keywords">Keywords</span>
+        <span class="pill" data-task="entities">Entities</span>
+      </div>
+    </div>
+
+    <div id="results" class="hidden">
+      <!-- Top stats row -->
+      <div class="grid" style="margin-bottom: 16px;">
+        <div class="stat-tile">
+          <div class="val" id="s-words">—</div>
+          <div class="lbl">Words</div>
+          <div class="sub-val" id="s-unique-words">— unique</div>
+        </div>
+        <div class="stat-tile">
+          <div class="val" id="s-sentences">—</div>
+          <div class="lbl">Sentences</div>
+          <div class="sub-val" id="s-avg-sentence">— avg length</div>
+        </div>
+        <div class="stat-tile">
+          <div class="val" id="s-reading-time">—</div>
+          <div class="lbl">Read time</div>
+          <div class="sub-val" id="s-speaking-time">— to speak</div>
+        </div>
+        <div class="stat-tile">
+          <div class="val" id="s-diversity">—</div>
+          <div class="lbl">Lexical diversity</div>
+          <div class="sub-val">unique / total</div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- Sentiment -->
+        <div class="card span-2">
+          <h2>Sentiment</h2>
+          <div class="gauge-wrap">
+            <svg class="gauge" viewBox="0 0 200 120">
+              <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#2b303c" stroke-width="14" stroke-linecap="round"/>
+              <path id="gauge-arc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#grad)" stroke-width="14" stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="251"/>
+              <defs>
+                <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#ff6b6b"/>
+                  <stop offset="50%" stop-color="#a0a6b8"/>
+                  <stop offset="100%" stop-color="#7ed99c"/>
+                </linearGradient>
+              </defs>
+              <circle id="gauge-needle" cx="100" cy="100" r="5" fill="#fff"/>
+            </svg>
+            <div class="gauge-label" id="sentiment-label">—</div>
+            <div class="gauge-score" id="sentiment-score">polarity: —</div>
+          </div>
+        </div>
+
+        <!-- Readability -->
+        <div class="card span-2">
+          <h2>Readability</h2>
+          <div class="meter-row">
+            <div class="meter-label">
+              <span>Flesch reading ease</span>
+              <strong id="flesch-score">—</strong>
+            </div>
+            <div class="meter"><div class="marker" id="flesch-marker" style="left: 0%"></div></div>
+          </div>
+          <div class="meter-row">
+            <div class="meter-label">
+              <span>Flesch-Kincaid grade</span>
+              <strong id="fk-score">—</strong>
+            </div>
+          </div>
+          <div class="reading-level">
+            Reading level: <strong id="reading-level">—</strong>
+          </div>
+        </div>
+
+        <!-- Keywords -->
+        <div class="card span-2">
+          <h2>Top keywords</h2>
+          <div class="cloud" id="cloud"></div>
+        </div>
+
+        <!-- Phrases + Entities split -->
+        <div class="card span-2">
+          <h2>Top phrases</h2>
+          <div class="cloud" id="phrases"></div>
+        </div>
+
+        <!-- Entities -->
+        <div class="card span-2">
+          <h2>Detected elements</h2>
+          <div id="entities"></div>
+        </div>
+
+        <!-- Sentence-level sentiment -->
+        <div class="card span-2">
+          <h2>Sentence breakdown</h2>
+          <div class="sentences" id="sentences"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const input = $("input");
+  const analyzeBtn = $("analyze");
+  let polling = null;
+
+  // Sample text for quick testing
+  const SAMPLE = `I recently visited the new restaurant downtown and I have to say it was an amazing experience. The service was excellent and the food was absolutely fantastic. Our waiter, Michael Thompson, was friendly and attentive throughout the evening.
+
+The appetizers arrived quickly and they were delicious. I especially loved the truffle pasta which was perfectly cooked. My partner had the grilled salmon which she said was outstanding.
+
+However, I was disappointed with the dessert. The tiramisu was bland and the chocolate cake was dry. The coffee was also cold when it arrived.
+
+Overall, despite the poor dessert selection, I would highly recommend this place. You can book a table at https://example-restaurant.com or email reservations@example.com. Follow them on social media @NewRestaurant and check #BestFood2024 for more reviews. Prices range from $15 to $65 per main course. They opened on March 15, 2024.`;
+
+  $("sample").addEventListener("click", () => {
+    input.value = SAMPLE;
+    updateCharCount();
+  });
+
+  input.addEventListener("input", updateCharCount);
+  function updateCharCount() {
+    const len = input.value.length;
+    $("char-count").textContent = len.toLocaleString();
+    analyzeBtn.disabled = len === 0;
+  }
+
+  analyzeBtn.addEventListener("click", async () => {
+    const text = input.value.trim();
+    if (!text) return;
+
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = "Running...";
+    $("results").classList.add("hidden");
+    document.querySelectorAll(".pill").forEach(p => p.classList.remove("done"));
+
+    try {
+      const res = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      const job = await res.json();
+      startPolling(job);
+    } catch (err) {
+      alert("Failed: " + err.message);
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = "Analyze";
+    }
+  });
+
+  function startPolling(job) {
+    $("progress-card").classList.remove("hidden");
+    $("status").textContent = "PENDING";
+    $("total").textContent = job.total_tasks;
+    $("completed").textContent = "0";
+    $("percent").textContent = "0%";
+    $("bar-fill").style.width = "0%";
+
+    const pillOrder = ["basic_stats", "readability", "sentiment", "keywords", "entities"];
+    let lastCompleted = 0;
+
+    if (polling) clearInterval(polling);
+    polling = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/jobs/${job.job_id}?group_id=${job.group_id}`);
+        const data = await res.json();
+        $("status").textContent = data.status;
+
+        if (data.progress) {
+          const { completed, total, percent } = data.progress;
+          $("completed").textContent = completed;
+          $("total").textContent = total;
+          $("percent").textContent = percent + "%";
+          $("bar-fill").style.width = percent + "%";
+
+          if (completed > lastCompleted) {
+            for (let i = lastCompleted; i < completed; i++) {
+              const pill = document.querySelector(`.pill[data-task="${pillOrder[i]}"]`);
+              if (pill) pill.classList.add("done");
+            }
+            lastCompleted = completed;
+          }
+        }
+
+        if (data.ready) {
+          clearInterval(polling);
+          polling = null;
+          analyzeBtn.disabled = false;
+          analyzeBtn.textContent = "Analyze";
+
+          if (data.successful) {
+            document.querySelectorAll(".pill").forEach(p => p.classList.add("done"));
+            renderResults(data.result);
+          } else {
+            alert("Job failed: " + JSON.stringify(data.result));
+          }
+        }
+      } catch (err) { console.error(err); }
+    }, 400);
+  }
+
+  function renderResults(r) {
+    $("results").classList.remove("hidden");
+    const stats = r.basic_stats || {};
+    const read = r.readability || {};
+    const sent = r.sentiment || {};
+    const kw = r.keywords || {};
+    const ent = r.entities || {};
+
+    // Top stats
+    $("s-words").textContent = (stats.words || 0).toLocaleString();
+    $("s-unique-words").textContent = (stats.unique_words || 0).toLocaleString() + " unique";
+    $("s-sentences").textContent = (stats.sentences || 0).toLocaleString();
+    $("s-avg-sentence").textContent = (stats.avg_sentence_length || 0) + " words avg";
+    $("s-reading-time").textContent = formatTime(stats.reading_time_minutes);
+    $("s-speaking-time").textContent = formatTime(stats.speaking_time_minutes) + " to speak";
+    $("s-diversity").textContent = ((stats.lexical_diversity || 0) * 100).toFixed(0) + "%";
+
+    // Sentiment gauge
+    const polarity = sent.polarity || 0;
+    const circumference = 251;
+    const normalized = (polarity + 1) / 2; // 0 to 1
+    const offset = circumference * (1 - normalized);
+    $("gauge-arc").setAttribute("stroke-dashoffset", offset);
+
+    const needleAngle = -90 + (normalized * 180); // -90 to +90 degrees
+    const rad = needleAngle * Math.PI / 180;
+    const nx = 100 + 70 * Math.cos(rad);
+    const ny = 100 + 70 * Math.sin(rad);
+    const needle = document.getElementById("gauge-needle");
+    needle.setAttribute("cx", nx);
+    needle.setAttribute("cy", ny);
+
+    const label = $("sentiment-label");
+    label.textContent = sent.overall || "neutral";
+    label.className = "gauge-label " + (sent.overall || "neutral");
+    $("sentiment-score").textContent = `polarity: ${polarity.toFixed(2)} · ${sent.positive_count || 0} positive, ${sent.negative_count || 0} negative`;
+
+    // Readability
+    const flesch = read.flesch_reading_ease;
+    $("flesch-score").textContent = flesch !== null && flesch !== undefined ? flesch : "—";
+    if (flesch !== null && flesch !== undefined) {
+      const pct = Math.max(0, Math.min(100, flesch));
+      $("flesch-marker").style.left = pct + "%";
+    }
+    $("fk-score").textContent = read.flesch_kincaid_grade !== null && read.flesch_kincaid_grade !== undefined ? read.flesch_kincaid_grade : "—";
+    $("reading-level").textContent = read.reading_level || "—";
+
+    // Keywords cloud
+    const cloud = $("cloud");
+    cloud.innerHTML = "";
+    (kw.top_keywords || []).forEach(k => {
+      const size = 12 + Math.round(k.weight * 10);
+      const el = document.createElement("span");
+      el.className = "kw";
+      el.style.fontSize = size + "px";
+      el.innerHTML = `${escapeHtml(k.word)} <span class="count">${k.count}</span>`;
+      cloud.appendChild(el);
+    });
+    if (!(kw.top_keywords || []).length) cloud.innerHTML = '<span class="ent-empty">No keywords found</span>';
+
+    // Phrases
+    const ph = $("phrases");
+    ph.innerHTML = "";
+    (kw.top_phrases || []).forEach(p => {
+      const el = document.createElement("span");
+      el.className = "kw";
+      el.innerHTML = `${escapeHtml(p.phrase)} <span class="count">${p.count}</span>`;
+      ph.appendChild(el);
+    });
+    if (!(kw.top_phrases || []).length) ph.innerHTML = '<span class="ent-empty">No repeated phrases found</span>';
+
+    // Entities
+    const entBox = $("entities");
+    entBox.innerHTML = "";
+    const groups = [
+      { key: "emails", label: "Emails", cls: "email" },
+      { key: "urls", label: "URLs", cls: "url" },
+      { key: "hashtags", label: "Hashtags", cls: "hashtag" },
+      { key: "mentions", label: "Mentions", cls: "mention" },
+      { key: "dates", label: "Dates", cls: "date" },
+      { key: "proper_nouns", label: "Names & places", cls: "proper", isObj: true },
+    ];
+    groups.forEach(g => {
+      const items = ent[g.key] || [];
+      if (items.length === 0) return;
+      const wrap = document.createElement("div");
+      wrap.className = "entity-group";
+      wrap.innerHTML = `<h3>${g.label} (${items.length})</h3><div class="entity-list"></div>`;
+      const list = wrap.querySelector(".entity-list");
+      items.forEach(item => {
+        const e = document.createElement("span");
+        e.className = "ent " + g.cls;
+        e.textContent = g.isObj ? `${item.name} (${item.count})` : item;
+        list.appendChild(e);
+      });
+      entBox.appendChild(wrap);
+    });
+    if (!entBox.children.length) entBox.innerHTML = '<span class="ent-empty">Nothing detected</span>';
+
+    // Sentence breakdown
+    const sentBox = $("sentences");
+    sentBox.innerHTML = "";
+    (sent.per_sentence || []).forEach(s => {
+      const el = document.createElement("div");
+      el.className = "sentence " + s.label;
+      el.innerHTML = `<span class="badge">${s.label}</span>${escapeHtml(s.text)}`;
+      sentBox.appendChild(el);
+    });
+    if (!(sent.per_sentence || []).length) sentBox.innerHTML = '<span class="ent-empty">No sentences found</span>';
+  }
+
+  function formatTime(minutes) {
+    if (!minutes) return "0s";
+    if (minutes < 1) return Math.round(minutes * 60) + "s";
+    const m = Math.floor(minutes);
+    const s = Math.round((minutes - m) * 60);
+    return s ? `${m}m ${s}s` : `${m}m`;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+})();
+</script>
+</body>
+</html>
