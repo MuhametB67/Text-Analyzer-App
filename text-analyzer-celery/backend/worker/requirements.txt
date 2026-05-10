@@ -1,0 +1,4 @@
+# Worker service dependencies — exact versions pinned for reproducibility.
+# Worker does not import FastAPI/uvicorn/pydantic, so they are excluded.
+celery==5.4.0
+redis==5.2.0
