@@ -1,0 +1,7 @@
+# API service dependencies — exact versions pinned for reproducibility.
+# Only what the FastAPI process needs at runtime.
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+celery==5.4.0
+redis==5.2.0
+pydantic==2.9.2

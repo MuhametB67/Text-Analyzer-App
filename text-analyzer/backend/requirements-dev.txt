@@ -1,0 +1,7 @@
+# Development / test dependencies — pinned for reproducibility.
+# Pulls in the api service's runtime deps (a superset of the worker's),
+# plus the test-only libraries.
+-r api/requirements.txt
+
+httpx==0.27.2
+pytest==8.3.3
